@@ -6,23 +6,27 @@ class AsciiChat < Formula
   url "https://github.com/vtvipul/ascii-chat/archive/refs/tags/v0.1.0.tar.gz"
   sha256 "8bd7751e1c533297786dc408342fa80ab65327d2ac90780bd40a1324b613ae26"
   license "MIT"
+  revision 1   # formula-only revision; same source tag, modern Brew 5.0 packaging
 
-  # System libraries that aiortc / sounddevice / PyAV link against. Brew will
-  # install these before pip-installing the Python deps below.
+  # System libraries that aiortc / sounddevice / PyAV link against.
   depends_on "ffmpeg"
   depends_on "libvpx"
   depends_on "opus"
   depends_on "portaudio"
-  depends_on "python@3.12"
+  depends_on "python@3.13"
   depends_on "srtp"
 
-  # Build-time only: cryptography (transitive dep of aiortc) is Rust-based since
-  # v42+ and uses maturin/PyO3. Brew forces --no-binary :all: when pip-installing
-  # resources, so a Rust toolchain has to be available at build time.
-  depends_on "rust" => :build
+  # Use prebuilt bottles for heavy native deps (Brew 5.0+ pattern). Each of
+  # these would otherwise take 1-3 minutes to compile from source per pip
+  # install --no-binary :all: policy. With :no_linkage Brew pulls the bottled
+  # versions of these formulas into the venv's site-packages instead.
+  # See: https://docs.brew.sh/Python-for-Formula-Authors
+  depends_on "cryptography" => :no_linkage
+  depends_on "numpy" => :no_linkage
 
-  # Python dependencies, pinned by version + SHA256. Generated via
-  # homebrew-pypi-poet -r aiortc / numpy / sounddevice.
+  # Python resources installed via pip from source. Cryptography / cffi /
+  # pycparser / numpy are intentionally NOT listed here — they come from the
+  # :no_linkage depends_on above.
 
   resource "aioice" do
     url "https://files.pythonhosted.org/packages/67/04/df7286233f468e19e9bedff023b6b246182f0b2ccb04ceeb69b2994021c6/aioice-0.10.2.tar.gz"
@@ -39,16 +43,6 @@ class AsciiChat < Formula
     sha256 "a094b4fd87a3721dacf02794d3d2c82b8d712c85b9534437e82a8a978c175ffd"
   end
 
-  resource "cffi" do
-    url "https://files.pythonhosted.org/packages/eb/56/b1ba7935a17738ae8453301356628e8147c79dbb825bcbc73dc7401f9846/cffi-2.0.0.tar.gz"
-    sha256 "44d1b5909021139fe36001ae048dbdde8214afa20200eda0f64c068cac5d5529"
-  end
-
-  resource "cryptography" do
-    url "https://files.pythonhosted.org/packages/9f/a9/db8f313fdcd85d767d4973515e1db101f9c71f95fced83233de224673757/cryptography-48.0.0.tar.gz"
-    sha256 "5c3932f4436d1cccb036cb0eaef46e6e2db91035166f1ad6505c3c9d5a635920"
-  end
-
   resource "dnspython" do
     url "https://files.pythonhosted.org/packages/8c/8b/57666417c0f90f08bcafa776861060426765fdb422eb10212086fb811d26/dnspython-2.8.0.tar.gz"
     sha256 "181d3c6996452cb1189c4046c61599b84a5a86e099562ffde77d26984ff26d0f"
@@ -62,16 +56,6 @@ class AsciiChat < Formula
   resource "ifaddr" do
     url "https://files.pythonhosted.org/packages/e8/ac/fb4c578f4a3256561548cd825646680edcadb9440f3f68add95ade1eb791/ifaddr-0.2.0.tar.gz"
     sha256 "cc0cbfcaabf765d44595825fb96a99bb12c79716b73b44330ea38ee2b0c4aed4"
-  end
-
-  resource "numpy" do
-    url "https://files.pythonhosted.org/packages/d0/ad/fed0499ce6a338d2a03ebae59cd15093910c8875328855781952abf6c2fe/numpy-2.4.6.tar.gz"
-    sha256 "f3a3570c4a2a16746ac2c31a7c7c7b0c186b95ce902e33db6f28094ed7387dda"
-  end
-
-  resource "pycparser" do
-    url "https://files.pythonhosted.org/packages/1b/7d/92392ff7815c21062bea51aa7b87d45576f649f16458d78b7cf94b9ab2e6/pycparser-3.0.tar.gz"
-    sha256 "600f49d217304a5902ac3c37e1281c9fe94e4d0489de643a9504c5cdfdfc6b29"
   end
 
   resource "pyee" do
@@ -104,8 +88,7 @@ class AsciiChat < Formula
   end
 
   test do
-    # The full app needs camera + mic which we can't grant in a test env,
-    # so we settle for confirming the console script exists and imports work.
-    assert_match "Peer-to-peer terminal video+audio call", shell_output("#{bin}/ascii-chat --help")
+    assert_match "Peer-to-peer terminal video+audio call",
+                 shell_output("#{bin}/ascii-chat --help")
   end
 end
