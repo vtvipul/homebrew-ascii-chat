@@ -16,6 +16,11 @@ class AsciiChat < Formula
   depends_on "python@3.12"
   depends_on "srtp"
 
+  # Build-time only: cryptography (transitive dep of aiortc) is Rust-based since
+  # v42+ and uses maturin/PyO3. Brew forces --no-binary :all: when pip-installing
+  # resources, so a Rust toolchain has to be available at build time.
+  depends_on "rust" => :build
+
   # Python dependencies, pinned by version + SHA256. Generated via
   # homebrew-pypi-poet -r aiortc / numpy / sounddevice.
 
